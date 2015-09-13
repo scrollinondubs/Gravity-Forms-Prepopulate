@@ -1,0 +1,264 @@
+<?php
+
+
+
+/*------------------------------------------------------------------------------
+
+
+
+Plugin Name: Gravity forms pre populate add-on
+
+
+
+Plugin URI: https://grid7.com
+
+
+
+Description: Add-on to Gravity Forms for passing persisted query string variables
+
+
+
+Author: Sean Tierney
+
+
+
+Version: 0.1
+
+
+
+Author URI: https://grid7.com
+
+
+
+------------------------------------------------------------------------------*/
+
+
+
+$gravitypopulate = explode(',', esc_attr(get_option('gravitypopulate_options')));
+
+$gravitypopulate = array_map('trim', $gravitypopulate);
+
+
+
+
+
+function save_ref($gravitypopulate)
+{
+    
+    
+    
+    foreach ($gravitypopulate as $key) {
+        
+        if (isset($_GET[$key])) {
+            
+            setcookie($key, htmlspecialchars($_GET[$key], ENT_QUOTES), time() + 99999999, '/', NULL);
+            
+        }
+        
+    }
+    
+}
+
+
+
+add_action('init', function($arg) use ($gravitypopulate)
+{
+    
+    save_ref($gravitypopulate);
+    
+}, 1);
+
+
+
+foreach ($gravitypopulate as $key) {
+    
+    add_filter('gform_field_value_' . $key, function($arg) use ($key)
+    {
+        
+        
+        
+        if (isset($_COOKIE[$key])) {
+            
+            return htmlspecialchars($_COOKIE[$key], ENT_QUOTES);
+            
+        } else if (isset($_GET[$key])) {
+            
+            return htmlspecialchars($_GET[$key], ENT_QUOTES);
+            
+        } else
+            return '';
+        
+        
+        
+    }, -999);
+    
+}
+
+
+
+
+
+function generate_Populate_admin_page()
+{
+    
+    $msg = '';
+    
+    if (!empty($_POST) && check_admin_referer('gravitypopulate_options_update', 'gravitypopulate_admin_nonce')) {
+        
+        update_option('gravitypopulate_options', stripslashes($_POST['inputs']));
+		update_option('sakka_actid', stripslashes($_POST['actid']));
+        
+        $msg = '<div class="updated"><p>Your settings have been<strong>updated</strong></p></div>';
+        
+    }
+    
+    
+    echo '<div class="wrap">
+
+  <h2>Gravity Populate Configuration</h2>' . $msg . '
+
+  <form action="" method="post" id="inputs">
+
+
+
+    <p>Enter inputs Parameter Names separated with , <br/>
+
+      <textarea type="text" id="inputs" name="inputs" style="width:60%;">' . esc_attr(get_option('gravitypopulate_options')) . '</textarea>
+
+    </p>
+	<p>Enter Active Campaign Account ID : 
+
+      <input type="text" id="actid" name="actid" value="'.esc_attr(get_option('sakka_actid')).'" style="width:30%;"/>
+    </p>
+
+    <p class="submit">
+
+      <input type="submit" name="submit"
+
+value="Update" />
+
+    </p>
+
+    ' . wp_nonce_field('gravitypopulate_options_update', 'gravitypopulate_admin_nonce') . '
+
+  </form>
+
+</div>';
+    
+    
+    
+}
+
+
+
+function Gravity_Populate_add_menu_item()
+{
+    
+    add_submenu_page('plugins.php', // Menu page to attach to
+        'Gravity Populate Configuration', // page title
+        'Gravity Populate', // menu title
+        'manage_options', // permissions
+        'Gravity-Populate', // page-name (used in the URL)
+        'generate_Populate_admin_page' // clicking callback function
+        );
+    
+}
+
+
+
+add_action('admin_menu', 'Gravity_Populate_add_menu_item');
+
+
+
+
+
+
+
+function gravity_custom_prepopulate_css()
+{
+    
+    $css = '<script>jQuery(document).ready(function(){';
+    
+    $css .= 'jQuery( "input[value^=\'replace_me_\']" ).each(function( index ) {
+
+	var input_value = jQuery( this ).val().replace("replace_me_", "");
+
+	var cookie_value =getCookie(input_value);
+
+	if(cookie_value=="")  jQuery( this ).val(""); else jQuery( this ).val(cookie_value);
+
+
+
+});';
+    
+    $css .= '});';
+    
+    $css .= 'function getCookie(name) {
+
+    var nameEQ = name + "=";
+
+    var ca = document.cookie.split(";");
+
+    for(var i=0;i < ca.length;i++) {
+
+        var c = ca[i];
+
+        while (c.charAt(0)==" ") c = c.substring(1,c.length);
+
+        if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length,c.length);
+
+    }
+
+    return null;
+
+}';
+    
+    $css .= '</script>';
+    
+    echo $css;
+    
+}
+
+
+
+add_filter('wp_head', 'gravity_custom_prepopulate_css');
+
+
+/* tracking email */
+
+add_filter("gform_save_field_value", "sakka_save_field_value", 10, 4);
+
+function sakka_save_field_value($value, $lead, $field, $form)
+{
+    if ($field["label"] == 'Email') {
+        setcookie('email', htmlspecialchars($value, ENT_QUOTES), time() + 99999999, '/', NULL);
+    }
+    return $value;
+}
+add_filter('wp_head', 'sakka_tracking_email');
+function sakka_tracking_email()
+{
+	$sakka_actid = esc_attr(get_option('sakka_actid','0'));
+    if (isset($_COOKIE['email']))
+        echo '<script type="text/javascript">
+	var trackcmp_email = "' . htmlspecialchars($_COOKIE['email']) . '";
+	var trackcmp = document.createElement("script");
+	trackcmp.async = true;
+	trackcmp.type = "text/javascript";
+	trackcmp.src = "//trackcmp.net/visit?actid='.$sakka_actid.'&e="+encodeURIComponent(trackcmp_email)+"&r="+encodeURIComponent(document.referrer)+"&u="+encodeURIComponent(window.location.href);
+	var trackcmp_s = document.getElementsByTagName("script");
+	if (trackcmp_s.length) {
+		trackcmp_s[0].parentNode.appendChild(trackcmp);
+	} else {
+		var trackcmp_h = document.getElementsByTagName("head");
+		trackcmp_h.length && trackcmp_h[0].appendChild(trackcmp);
+	}
+	</script>';
+    
+}
+
+
+
+
+
+/* EOF */
