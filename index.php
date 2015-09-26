@@ -120,7 +120,7 @@ function generate_Populate_admin_page()
       <textarea type="text" id="inputs" name="inputs" style="width:60%;">' . esc_attr(get_option('gravitypopulate_options')) . '</textarea>
 
     </p>
-	<p>Enter Active Campaign Account ID : 
+	<p>Enter <a href="http://www.activecampaign.com/?_r=CFWQFK4C" target="_new">Active Campaign</a> Account ID : 
 
       <input type="text" id="actid" name="actid" value="'.esc_attr(get_option('sakka_actid')).'" style="width:30%;"/>
     </p>
