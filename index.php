@@ -33,20 +33,20 @@ Author URI: https://grid7.com
 ------------------------------------------------------------------------------*/
 
 
-
+// get fields names
 $gravitypopulate = explode(',', esc_attr(get_option('gravitypopulate_options')));
-
 $gravitypopulate = array_map('trim', $gravitypopulate);
 
 
-
-
+add_action('init', function($arg) use ($gravitypopulate)
+{
+    if(!is_admin()) save_ref($gravitypopulate);
+}, 1);
 
 function save_ref($gravitypopulate)
 {
-    
-    
-    
+
+	//stores GET varaible in cookies if available
     foreach ($gravitypopulate as $key) {
         
         if (isset($_GET[$key])) {
@@ -56,40 +56,34 @@ function save_ref($gravitypopulate)
         }
         
     }
-    
+
+
+	if (isset($_COOKIE['HTTP_REFERER'])) {
+		$_POST['input_-2']=htmlspecialchars($_COOKIE['HTTP_REFERER']);
+	}elseif(isset($_SERVER['HTTP_REFERER']) and $_SERVER['HTTP_REFERER']!=''){
+		setcookie('HTTP_REFERER', htmlspecialchars($_SERVER['HTTP_REFERER'], ENT_QUOTES), time() + 99999999, '/', NULL);
+		$_POST['input_-2']=htmlspecialchars($_SERVER['HTTP_REFERER']);
+	}
+
 }
-
-
-
-add_action('init', function($arg) use ($gravitypopulate)
-{
-    
-    save_ref($gravitypopulate);
-    
-}, 1);
-
 
 
 foreach ($gravitypopulate as $key) {
     
     add_filter('gform_field_value_' . $key, function($arg) use ($key)
     {
+
+         if (isset($_GET[$key])) {
+            
+            return htmlspecialchars($_GET[$key], ENT_QUOTES);
         
-        
-        
-        if (isset($_COOKIE[$key])) {
+		}else if (isset($_COOKIE[$key])) {
             
             return htmlspecialchars($_COOKIE[$key], ENT_QUOTES);
             
-        } else if (isset($_GET[$key])) {
-            
-            return htmlspecialchars($_GET[$key], ENT_QUOTES);
-            
         } else
             return '';
-        
-        
-        
+
     }, -999);
     
 }
@@ -164,64 +158,20 @@ function Gravity_Populate_add_menu_item()
     
 }
 
-
-
 add_action('admin_menu', 'Gravity_Populate_add_menu_item');
 
 
-
-
-
-
-
-function gravity_custom_prepopulate_css()
+function gravity_custom_prepopulate_js()
 {
-    
-    $css = '<script>jQuery(document).ready(function(){';
-    
-    $css .= 'jQuery( "input[value^=\'replace_me_\']" ).each(function( index ) {
-
-	var input_value = jQuery( this ).val().replace("replace_me_", "");
-
-	var cookie_value =getCookie(input_value);
-
-	if(cookie_value=="")  jQuery( this ).val(""); else jQuery( this ).val(cookie_value);
-
-
-
-});';
-    
-    $css .= '});';
-    
-    $css .= 'function getCookie(name) {
-
-    var nameEQ = name + "=";
-
-    var ca = document.cookie.split(";");
-
-    for(var i=0;i < ca.length;i++) {
-
-        var c = ca[i];
-
-        while (c.charAt(0)==" ") c = c.substring(1,c.length);
-
-        if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length,c.length);
-
-    }
-
-    return null;
-
-}';
-    
-    $css .= '</script>';
-    
-    echo $css;
+    $js = '<script>jQuery(document).ready(function(){';
+	$js .='jQuery("form").append("<input type=\'hidden\' name=\'input_-1\' value=\'"+window.location.href+"\'>");';
+    $js .= '});';
+    $js .= '</script>';
+    echo $js;
     
 }
 
-
-
-add_filter('wp_head', 'gravity_custom_prepopulate_css');
+add_filter('wp_head', 'gravity_custom_prepopulate_js');
 
 
 /* tracking email */
@@ -258,6 +208,21 @@ function sakka_tracking_email()
 }
 
 
+add_filter('gform_admin_pre_render','sakka_gform_admin_pre_render',1);
+function sakka_gform_admin_pre_render($form){
+	if($_GET['page']=='gf_edit_forms') return $form;
+	array_push($form['fields'],new GF_Field_Hidden(array('label'=>'REQUEST_URI','id'=>-1)));
+	array_push($form['fields'],new GF_Field_Hidden(array('label'=>'HTTP_REFERER','id'=>-2)));
+
+	return $form;
+}
+
+add_filter('gform_pre_submission_filter','sakka_gform_pre_submission_filter',1);
+function sakka_gform_pre_submission_filter($form){
+	array_push($form['fields'],new GF_Field_Hidden(array('label'=>'REQUEST_URI','id'=>-1,'size'=>'medium','type'=>'text')));
+	array_push($form['fields'],new GF_Field_Hidden(array('label'=>'HTTP_REFERER','id'=>-2,'size'=>'medium','type'=>'text')));
+	return $form;
+}
 
 
 
