@@ -46,24 +46,31 @@ add_action('init', function($arg) use ($gravitypopulate)
 function save_ref($gravitypopulate)
 {
 
-	//stores GET varaible in cookies if available
+    $gravitypopulate_domain = esc_attr(get_option('gravitypopulate_cookiedomain'));
+
+    $cookie_domain = NULL;
+    if ($gravitypopulate_domain) {
+        $cookie_domain = $gravitypopulate_domain;
+    }
+
+    //stores GET varaible in cookies if available
     foreach ($gravitypopulate as $key) {
         
         if (isset($_GET[$key])) {
             
-            setcookie($key, htmlspecialchars($_GET[$key], ENT_QUOTES), time() + 99999999, '/', NULL);
+            setcookie($key, htmlspecialchars($_GET[$key], ENT_QUOTES), time() + 99999999, '/', $cookie_domain);
             
         }
         
     }
 
 
-	if (isset($_COOKIE['HTTP_REFERER'])) {
-		$_POST['input_-2']=htmlspecialchars($_COOKIE['HTTP_REFERER']);
-	}elseif(isset($_SERVER['HTTP_REFERER']) and $_SERVER['HTTP_REFERER']!=''){
-		setcookie('HTTP_REFERER', htmlspecialchars($_SERVER['HTTP_REFERER'], ENT_QUOTES), time() + 99999999, '/', NULL);
-		$_POST['input_-2']=htmlspecialchars($_SERVER['HTTP_REFERER']);
-	}
+    if (isset($_COOKIE['HTTP_REFERER'])) {
+        $_POST['input_-2']=htmlspecialchars($_COOKIE['HTTP_REFERER']);
+    }elseif(isset($_SERVER['HTTP_REFERER']) and $_SERVER['HTTP_REFERER']!=''){
+        setcookie('HTTP_REFERER', htmlspecialchars($_SERVER['HTTP_REFERER'], ENT_QUOTES), time() + 99999999, '/', NULL);
+        $_POST['input_-2']=htmlspecialchars($_SERVER['HTTP_REFERER']);
+    }
 
 }
 
@@ -77,7 +84,7 @@ foreach ($gravitypopulate as $key) {
             
             return htmlspecialchars($_GET[$key], ENT_QUOTES);
         
-		}else if (isset($_COOKIE[$key])) {
+        }else if (isset($_COOKIE[$key])) {
             
             return htmlspecialchars($_COOKIE[$key], ENT_QUOTES);
             
@@ -100,11 +107,14 @@ function generate_Populate_admin_page()
     if (!empty($_POST) && check_admin_referer('gravitypopulate_options_update', 'gravitypopulate_admin_nonce')) {
         
         update_option('gravitypopulate_options', stripslashes($_POST['inputs']));
-		update_option('sakka_actid', stripslashes($_POST['actid']));
+        update_option('sakka_actid', stripslashes($_POST['actid']));
+        update_option('gravitypopulate_cookiedomain', stripslashes($_POST['cookie_domain']));
         
-        $msg = '<div class="updated"><p>Your settings have been<strong>updated</strong></p></div>';
+        $msg = '<div class="updated"><p>Your settings have been <strong>updated</strong></p></div>';
         
     }
+
+    $host = $_SERVER['HTTP_HOST'];
     
     
     echo '<div class="wrap">
@@ -120,9 +130,14 @@ function generate_Populate_admin_page()
       <textarea type="text" id="inputs" name="inputs" style="width:60%;">' . esc_attr(get_option('gravitypopulate_options')) . '</textarea>
 
     </p>
-	<p>Enter <a href="http://www.activecampaign.com/?_r=CFWQFK4C" target="_new">Active Campaign</a> Account ID : 
+    <p>Enter <a href="http://www.activecampaign.com/?_r=CFWQFK4C" target="_new">Active Campaign</a> Account ID : 
 
       <input type="text" id="actid" name="actid" value="'.esc_attr(get_option('sakka_actid')).'" style="width:30%;"/>
+    </p>
+
+    <p>Cookie Domain (defaults to ' . htmlspecialchars($host) . ') : 
+
+      <input type="text" id="cookie_domain" name="cookie_domain" value="'.esc_attr(get_option('gravitypopulate_cookiedomain')).'" style="width:30%;"/>
     </p>
 
     <p class="submit">
@@ -164,7 +179,7 @@ add_action('admin_menu', 'Gravity_Populate_add_menu_item');
 function gravity_custom_prepopulate_js()
 {
     $js = '<script>jQuery(document).ready(function(){';
-	$js .='jQuery("form").append("<input type=\'hidden\' name=\'input_-1\' value=\'"+window.location.href+"\'>");';
+    $js .='jQuery("form").append("<input type=\'hidden\' name=\'input_-1\' value=\'"+window.location.href+"\'>");';
     $js .= '});';
     $js .= '</script>';
     echo $js;
@@ -188,40 +203,40 @@ function sakka_save_field_value($value, $lead, $field, $form)
 add_filter('wp_head', 'sakka_tracking_email');
 function sakka_tracking_email()
 {
-	$sakka_actid = esc_attr(get_option('sakka_actid','0'));
+    $sakka_actid = esc_attr(get_option('sakka_actid','0'));
     if (isset($_COOKIE['email']))
         echo '<script type="text/javascript">
-	var trackcmp_email = "' . htmlspecialchars($_COOKIE['email']) . '";
-	var trackcmp = document.createElement("script");
-	trackcmp.async = true;
-	trackcmp.type = "text/javascript";
-	trackcmp.src = "//trackcmp.net/visit?actid='.$sakka_actid.'&e="+encodeURIComponent(trackcmp_email)+"&r="+encodeURIComponent(document.referrer)+"&u="+encodeURIComponent(window.location.href);
-	var trackcmp_s = document.getElementsByTagName("script");
-	if (trackcmp_s.length) {
-		trackcmp_s[0].parentNode.appendChild(trackcmp);
-	} else {
-		var trackcmp_h = document.getElementsByTagName("head");
-		trackcmp_h.length && trackcmp_h[0].appendChild(trackcmp);
-	}
-	</script>';
+    var trackcmp_email = "' . htmlspecialchars($_COOKIE['email']) . '";
+    var trackcmp = document.createElement("script");
+    trackcmp.async = true;
+    trackcmp.type = "text/javascript";
+    trackcmp.src = "//trackcmp.net/visit?actid='.$sakka_actid.'&e="+encodeURIComponent(trackcmp_email)+"&r="+encodeURIComponent(document.referrer)+"&u="+encodeURIComponent(window.location.href);
+    var trackcmp_s = document.getElementsByTagName("script");
+    if (trackcmp_s.length) {
+        trackcmp_s[0].parentNode.appendChild(trackcmp);
+    } else {
+        var trackcmp_h = document.getElementsByTagName("head");
+        trackcmp_h.length && trackcmp_h[0].appendChild(trackcmp);
+    }
+    </script>';
     
 }
 
 
 add_filter('gform_admin_pre_render','sakka_gform_admin_pre_render',1);
 function sakka_gform_admin_pre_render($form){
-	if($_GET['page']=='gf_edit_forms') return $form;
-	array_push($form['fields'],new GF_Field_Hidden(array('label'=>'REQUEST_URI','id'=>-1)));
-	array_push($form['fields'],new GF_Field_Hidden(array('label'=>'HTTP_REFERER','id'=>-2)));
+    if($_GET['page']=='gf_edit_forms') return $form;
+    array_push($form['fields'],new GF_Field_Hidden(array('label'=>'REQUEST_URI','id'=>-1)));
+    array_push($form['fields'],new GF_Field_Hidden(array('label'=>'HTTP_REFERER','id'=>-2)));
 
-	return $form;
+    return $form;
 }
 
 add_filter('gform_pre_submission_filter','sakka_gform_pre_submission_filter',1);
 function sakka_gform_pre_submission_filter($form){
-	array_push($form['fields'],new GF_Field_Hidden(array('label'=>'REQUEST_URI','id'=>-1,'size'=>'medium','type'=>'text')));
-	array_push($form['fields'],new GF_Field_Hidden(array('label'=>'HTTP_REFERER','id'=>-2,'size'=>'medium','type'=>'text')));
-	return $form;
+    array_push($form['fields'],new GF_Field_Hidden(array('label'=>'REQUEST_URI','id'=>-1,'size'=>'medium','type'=>'text')));
+    array_push($form['fields'],new GF_Field_Hidden(array('label'=>'HTTP_REFERER','id'=>-2,'size'=>'medium','type'=>'text')));
+    return $form;
 }
 
 
