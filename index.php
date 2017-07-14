@@ -46,12 +46,19 @@ add_action('init', function($arg) use ($gravitypopulate)
 function save_ref($gravitypopulate)
 {
 
+    $gravitypopulate_domain = esc_attr(get_option('gravitypopulate_cookiedomain'));
+
+    $cookie_domain = NULL;
+    if ($gravitypopulate_domain) {
+        $cookie_domain = $gravitypopulate_domain;
+    }
+
     //stores GET varaible in cookies if available
     foreach ($gravitypopulate as $key) {
         
         if (isset($_GET[$key])) {
             
-            setcookie($key, htmlspecialchars($_GET[$key], ENT_QUOTES), time() + 99999999, '/', NULL);
+            setcookie($key, htmlspecialchars($_GET[$key], ENT_QUOTES), time() + 99999999, '/', $cookie_domain);
             
         }
         
@@ -101,10 +108,13 @@ function generate_Populate_admin_page()
         
         update_option('gravitypopulate_options', stripslashes($_POST['inputs']));
         update_option('sakka_actid', stripslashes($_POST['actid']));
+        update_option('gravitypopulate_cookiedomain', stripslashes($_POST['cookie_domain']));
         
-        $msg = '<div class="updated"><p>Your settings have been<strong>updated</strong></p></div>';
+        $msg = '<div class="updated"><p>Your settings have been <strong>updated</strong></p></div>';
         
     }
+
+    $host = $_SERVER['HTTP_HOST'];
     
     
     echo '<div class="wrap">
@@ -123,6 +133,11 @@ function generate_Populate_admin_page()
     <p>Enter <a href="http://www.activecampaign.com/?_r=CFWQFK4C" target="_new">Active Campaign</a> Account ID : 
 
       <input type="text" id="actid" name="actid" value="'.esc_attr(get_option('sakka_actid')).'" style="width:30%;"/>
+    </p>
+
+    <p>Cookie Domain (defaults to ' . htmlspecialchars($host) . ') : 
+
+      <input type="text" id="cookie_domain" name="cookie_domain" value="'.esc_attr(get_option('gravitypopulate_cookiedomain')).'" style="width:30%;"/>
     </p>
 
     <p class="submit">
