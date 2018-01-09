@@ -32,18 +32,38 @@ Author URI: https://grid7.com
 
 ------------------------------------------------------------------------------*/
 
+if(parse_url($_SERVER['HTTP_REFERER'], PHP_URL_HOST) != parse_url($_COOKIE['HTTP_REFERER'], PHP_URL_HOST)   ){
+    if(isset($_COOKIE['HTTP_REFERER'])){     
+        if(parse_url((isset($_SERVER['HTTPS']) ? "https" : "http") . "://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]", PHP_URL_HOST) == parse_url($_COOKIE['HTTP_REFERER'], PHP_URL_HOST)){
+            $referer_link  = $_SERVER['HTTP_REFERER'];                     
+        }else{
+            $referer_link = $_COOKIE['HTTP_REFERER'];  
+        }      
+    }else{
+        $referer_link  = $_SERVER['HTTP_REFERER'];
+    }
+}else{
+    if(empty($_COOKIE['HTTP_REFERER'])){
+        $referer_link = (isset($_SERVER['HTTPS']) ? "https" : "http") . "://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]";
+    }else{
+        $referer_link = $_SERVER['HTTP_REFERER'];
+    }
+}
+
+// echo $referer_link;
+// print_r($_SERVER);
 
 // get fields names
 $gravitypopulate = explode(',', esc_attr(get_option('gravitypopulate_options')));
 $gravitypopulate = array_map('trim', $gravitypopulate);
 
 
-add_action('init', function($arg) use ($gravitypopulate)
+add_action('init', function($arg) use ($gravitypopulate, $referer_link)
 {
-    if(!is_admin()) save_ref($gravitypopulate);
+    if(!is_admin()) save_ref($gravitypopulate, htmlspecialchars($referer_link));
 }, 1);
 
-function save_ref($gravitypopulate)
+function save_ref($gravitypopulate, $referer_link)
 {
 
 	//stores GET varaible in cookies if available
@@ -57,13 +77,13 @@ function save_ref($gravitypopulate)
         
     }
 
-
+    setcookie('HTTP_REFERER', htmlspecialchars($referer_link, ENT_QUOTES), time() + 99999999, '/', NULL);
 	if (isset($_COOKIE['HTTP_REFERER'])) {
-		$_POST['input_-2']=htmlspecialchars($_COOKIE['HTTP_REFERER']);
-	}elseif(isset($_SERVER['HTTP_REFERER']) and $_SERVER['HTTP_REFERER']!=''){
-		setcookie('HTTP_REFERER', htmlspecialchars($_SERVER['HTTP_REFERER'], ENT_QUOTES), time() + 99999999, '/', NULL);
-		$_POST['input_-2']=htmlspecialchars($_SERVER['HTTP_REFERER']);
+		$_POST['input_-2']= htmlspecialchars($referer_link);
+	}elseif(isset($referer_link) and $referer_link!=''){
+		$_POST['input_-2']=htmlspecialchars($referer_link);
 	}
+
 
 }
 
