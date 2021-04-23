@@ -99,6 +99,14 @@ foreach ($gravitypopulate as $key) {
     
 }
 
+// $_COOKIE will be empty if served from cache. This, along with some JavaScript, will take care of populating the values.
+add_filter( 'gform_field_content', function ( $content, $field, $value, $lead_id, $form_id ) use ($gravitypopulate) {
+    if (in_array(trim($field->label), $gravitypopulate) && in_array(trim($field->inputName), $gravitypopulate) && $field->type === 'hidden') {
+        $content = '<div data-gravity-populate="' . $field->label . '">' . $content . '</div>';
+    }
+    return $content;
+}, 10, 5 );
+
 function generate_Populate_admin_page()
 {    
     $msg = '';    
